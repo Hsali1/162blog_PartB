@@ -283,8 +283,6 @@ app.post('/register', (req, res) => {
     // TODO: Register a new user
     registerUser(req, res);
     console.log('Registeration complete');
-    // TODO: delete code below
-    // console.log(users);
 });
 app.post('/login', (req, res) => {
     // TODO: Login a user
