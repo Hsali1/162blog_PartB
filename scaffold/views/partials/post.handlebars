@@ -23,7 +23,18 @@
             <button onclick="handleLikeClick(event)" class="like-button" data-id="{{id}}">
                 <i class="fas fa-thumbs-up"></i> Like
             </button>
-        </div>        
+        </div>  
+        
+        <div class="comments-section">
+            <h4>Comments</h4>
+            <ul id="comments-list-{{id}}">
+                <!-- Comments will be dynamically loaded here -->
+            </ul>
+            {{#if loggedIn}}
+                <textarea id="comment-input-{{id}}" placeholder="Add a comment..."></textarea>
+                <button onclick="handleCommentSubmit(event)" class="comment-submit-button like-button" data-id="{{id}}">Submit</button>
+            {{/if}}
+        </div>     
     </div>
 </div>
 
@@ -69,6 +80,57 @@
             .catch(error => console.error('Error deleting the post:', error));
     }
 
+    async function loadComments(postId) {
+        try {
+            const response = await fetch(`/posts/${postId}/comments`);
+            const comments = await response.json();
+            const commentsList = document.getElementById(`comments-list-${postId}`);
+            commentsList.innerHTML = '';
 
+            comments.forEach(comment => {
+                const li = document.createElement('li');
+                li.textContent = `${comment.username}: ${comment.content}`;
+                commentsList.appendChild(li);
+            });
+        } catch (error) {
+            console.error('Error loading comments:', error);
+        }
+    }
+
+    function handleCommentSubmit(event) {
+        const button = event.target;
+        const postId = button.getAttribute('data-id');
+        const commentInput = document.getElementById(`comment-input-${postId}`);
+        const content = commentInput.value;
+
+        fetch(`/posts/${postId}/comments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                commentInput.value = '';
+                loadComments(postId);
+            } else {
+                console.error('Failed to add comment:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error adding comment:', error);
+        });
+    }
+
+    // Load comments for each post after the page loads
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.post').forEach(postElement => {
+            const postId = postElement.querySelector('.like-button').getAttribute('data-id');
+            loadComments(postId);
+        });
+    });
+</script>
 
 </script>

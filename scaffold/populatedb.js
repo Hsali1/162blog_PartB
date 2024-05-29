@@ -35,6 +35,16 @@ async function initializeDB() {
             FOREIGN KEY (userId) REFERENCES users(id),
             FOREIGN KEY (postId) REFERENCES posts(id)
         );
+
+        CREATE TABLE IF NOT EXISTS comments (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            postId INTEGER NOT NULL,
+            username TEXT NOT NULL,
+            content TEXT NOT NULL,
+            timestamp DATETIME NOT NULL,
+            FOREIGN KEY (postId) REFERENCES posts (id),
+            FOREIGN KEY (username) REFERENCES users (username)
+        );
     `);
 
     // Sample data - consider adding password for these sample entries

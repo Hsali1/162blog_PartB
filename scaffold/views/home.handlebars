@@ -34,7 +34,7 @@
         {{#if posts.length}}
         <ul>
             {{#each posts}}
-                {{> post this user=../user}}            
+                {{> post this loggedIn=../loggedIn user=../user}}           
             {{/each}}
         </ul>
         {{else}}

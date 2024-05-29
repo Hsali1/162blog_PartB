@@ -235,6 +235,49 @@ app.get('/avatar/:username', async (req, res) => {
     }
 });
 
+app.get('/posts/:id/comments', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const db = app.locals.db;
+
+    try {
+        const comments = await db.all("SELECT * FROM comments WHERE postId = ? ORDER BY timestamp ASC", [postId]);
+        res.status(200).json(comments);
+    } catch (error) {
+        console.error('Error retrieving comments:', error);
+        res.status(500).json({ success: false, message: "Internal server error." });
+    }
+});
+
+app.post('/posts/:id/comments', async (req, res) => {
+    const postId = parseInt(req.params.id);
+    const { content } = req.body;
+    const userId = req.session.userId;
+
+    if (!userId) {
+        return res.status(403).json({ success: false, message: "You must be logged in to comment." });
+    }
+
+    const user = await findUserById(userId);
+
+    if (!user) {
+        return res.status(404).json({ success: false, message: "User not found." });
+    }
+
+    const db = app.locals.db;
+    const timestamp = new Date().toISOString();
+
+    try {
+        await db.run(
+            "INSERT INTO comments (postId, username, content, timestamp) VALUES (?, ?, ?, ?)",
+            [postId, user.username, content, timestamp]
+        );
+
+        res.status(200).json({ success: true, message: "Comment added successfully." });
+    } catch (error) {
+        console.error('Error adding comment:', error);
+        res.status(500).json({ success: false, message: "Internal server error." });
+    }
+});
 
 
 app.post('/register', (req, res) => {
