@@ -54,7 +54,6 @@ async function startServer() {
 startServer();
 
 // Set up Handlebars view engine with custom helpers
-//
 app.engine(
     'handlebars',
     expressHandlebars.engine({
@@ -100,7 +99,7 @@ app.use(async(req, res, next) => {
 
     // If the user is logged in, fetch additional details
     if (res.locals.loggedIn && res.locals.userId) {
-        const user = await findUserById(res.locals.userId); // This function needs to be defined to fetch user data
+        const user = await findUserById(res.locals.userId); 
         if (user) {
             res.locals.username = user.username;
             res.locals.avatar_url = user.avatar_url || '/images/default.png'; // Provide a default if none is set
