@@ -1,20 +1,31 @@
 {
-  "name": "162blog",
+  "name": "162blog_partb",
   "version": "1.0.0",
-  "description": "hw3",
+  "description": "hw4",
   "main": "server.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node server.js"
   },
-  "author": "Hassan and Jack",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Hsali1/162blog_PartB.git"
+  },
+  "author": "Hassan",
   "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Hsali1/162blog_PartB/issues"
+  },
+  "homepage": "https://github.com/Hsali1/162blog_PartB#readme",
   "dependencies": {
     "canvas": "^2.11.2",
+    "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "express-handlebars": "^7.1.2",
     "express-session": "^1.18.0",
     "node-gyp": "^10.1.0",
-    "node-pre-gyp": "^0.17.0"
+    "node-pre-gyp": "^0.17.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7"
   }
 }

@@ -1,9 +1,7 @@
-{{! Partial for a single post }}
 <div class="post">
     <div class="post-avatar">
         <!-- the user's avatar -->
-        <img src="{{#if avatar_url}}/images/{{username}}.png{{else}}avatar/{{username}}{{/if}}" alt="Profile Avatar">
-    {{!-- <img src="avatar/{{username}}" alt="dd"> --}}
+        <img src="{{#if avatar_url}}{{avatar_url}}{{else}}avatar/{{username}}{{/if}}" alt="Profile Avatar">
     </div>
     <div class="post-content preserve-newlines">
         <!-- the post -->
@@ -28,10 +26,10 @@
         </div>        
     </div>
 </div>
-<script>
 
+<script>
     function handleLikeClick(event) {
-        const button = event.target;
+        const button = event.target.closest('.like-button');
         const postId = button.getAttribute('data-id');
 
         fetch(`/like/${postId}`, { method: 'POST' })
@@ -45,26 +43,32 @@
                     }
                     button.classList.toggle('liked');
                 } else {
-                    // alert(data.message); // Show error message from server
+                    console.error(data.message); // Show error message from server
                 }
             })
             .catch(error => {
                 console.error('Error liking the post:', error);
-                // alert('Could not process your like. Please try again.');
             });
-        }
+    }
 
     function handleDeleteClick(event) {
         const buttonElement = event.target.closest('.delete-button');
         const postId = buttonElement.getAttribute('data-id');
-        // you might want to "fetch" something...        
-        fetch(`/delete/${postId}`, { method: 'POST' })
+
+        fetch(`/delete/${postId}`, { method: 'DELETE' })
             .then(response => {
                 if (response.ok) {
                     console.log('Post deleted');
                     buttonElement.closest('.post').remove();  // Remove post from DOM
+                } else {
+                    response.json().then(data => {
+                        console.error('Failed to delete post:', data.message);
+                    });
                 }
             })
             .catch(error => console.error('Error deleting the post:', error));
-    }    
+    }
+
+
+
 </script>

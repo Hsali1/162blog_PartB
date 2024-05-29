@@ -27,8 +27,7 @@
                     <div class="user-info">
 
                         <!-- conditional rendering based on variables -->
-                    <img src="{{#if avatar_url}}/images/{{username}}.png{{else}}avatar/{{username}}{{/if}}" alt="Profile Avatar" class="avatar-img">
-    
+                    <img src="{{#if avatar_url}}{{avatar_url}}{{else}}avatar/{{username}}{{/if}}" alt="Profile Avatar">   
                     </div>
                 {{else}}
                     <li><a href="/">Home</a></li>
