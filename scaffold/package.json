@@ -1,0 +1,20 @@
+{
+  "name": "162blog",
+  "version": "1.0.0",
+  "description": "hw3",
+  "main": "server.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "start": "node server.js"
+  },
+  "author": "Hassan and Jack",
+  "license": "ISC",
+  "dependencies": {
+    "canvas": "^2.11.2",
+    "express": "^4.19.2",
+    "express-handlebars": "^7.1.2",
+    "express-session": "^1.18.0",
+    "node-gyp": "^10.1.0",
+    "node-pre-gyp": "^0.17.0"
+  }
+}
