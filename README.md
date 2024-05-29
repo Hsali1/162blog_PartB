@@ -2,11 +2,12 @@
 
 ## Usage:
 ```console
-> git clone https://github.com/jdkriner/162blog.git
+> git clone https://github.com/Hsali1/162blog_PartB.git
 > cd 162blog/scaffold
 > npm install
 > node server.js
 ```
+Would require a .env file with .db file, session secret and api key for emojis established
 
 ## 1. User Registration
 
