@@ -1,3 +1,4 @@
 # Ignore node_modules in scaffold subdirectory
 scaffold/node_modules/
 scaffold/.env
+scaffold/database.db
