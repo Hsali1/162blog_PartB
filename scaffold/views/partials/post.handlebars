@@ -20,7 +20,7 @@
                     <i class="fas fa-trash-alt"></i>
                 </button>
             {{/if}}
-            <button onclick="handleLikeClick(event)" class="like-button" data-id="{{id}}">
+            <button onclick="handleLikeClick(event)" class="like-button {{#if userHasLiked}}liked{{/if}}" data-id="{{id}}">
                 <i class="fas fa-thumbs-up"></i> Like
             </button>
         </div>  

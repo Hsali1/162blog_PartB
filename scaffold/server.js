@@ -162,6 +162,12 @@ app.get('/', async (req, res) => {
             const postUser = await app.locals.db.get("SELECT * FROM users WHERE username = ?", post.username);
             post.avatar_url = postUser ? postUser.avatar_url : null;
             post.userCanEdit = user && post.username === user.username;
+
+            // Check if the user has liked the post
+            if (user) {
+                const userLike = await app.locals.db.get("SELECT * FROM likes WHERE userId = ? AND postId = ?", [user.id, post.id]);
+                post.userHasLiked = !!userLike;
+            }
         }
 
         res.render('home', {
@@ -439,7 +445,7 @@ function calculateDate(){
 
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
-    console.log(req.session.userId);
+    // console.log(req.session.userId);
     if (req.session.userId) {
         next();
     } else {
@@ -534,7 +540,7 @@ async function renderProfile(req, res) {
             // Add a property to each post to indicate that the user can edit their own posts
             userPosts.forEach(post => post.userCanEdit = true);
 
-            console.log(userPosts);
+            // console.log(userPosts);
             res.render('profile', { user, posts: userPosts, postNeoType: 'Post'});
         } else {
             res.redirect('/login');
