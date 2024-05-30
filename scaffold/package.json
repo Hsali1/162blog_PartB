@@ -25,6 +25,8 @@
     "express-session": "^1.18.0",
     "node-gyp": "^10.1.0",
     "node-pre-gyp": "^0.17.0",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
     "sqlite": "^5.1.1",
     "sqlite3": "^5.1.7"
   }

@@ -1,33 +1,21 @@
-{{! Use the main layout }}
-{{!< main }}
-
-<section class="login-register">
-    <section class = "login-area">
-        <h2>Login</h2>
-        <!-- errors will appear here -->
-        {{#if loginError}}
-            <p style="color: red;">{{loginError}}</p>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register Username</title>
+    <link rel="stylesheet" href="/css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h2>Register Username</h2>
+        {{#if error}}
+            <p class="error-message">{{error}}</p>
         {{/if}}
-        <form action="/login" method="POST">
-            <input type="text" placeholder="username" name="username">  
-            <input type="password" placeholder="password" name="password">     
-             <button type="submit">Login</button>
+        <form class="register-form" action="/registerUsername" method="POST">
+            <input type="text" placeholder="username" name="username" required>
+            <button type="submit" class="register-button">Register</button>
         </form>
-    </section>
-
-    <!-- say --OR-- ... with style -->
-
-    <section class = "register-area">
-        <h2>Register</h2>
-        <!-- errors will appear here -->
-        {{#if regError}}
-            <p style="color: red;">{{regError}}</p>
-        {{/if}}
-        <form action="/register" method="POST">
-            <!-- the registration form goes here -->
-            <input type="text" placeholder="username" name="username">  
-            <input type="password" placeholder="password" name="password">
-            <button type="submit">Register</button>
-        </form>
-    </section>
-</section>
+    </div>
+</body>
+</html>

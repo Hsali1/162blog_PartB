@@ -4,6 +4,12 @@ const expressHandlebars = require('express-handlebars');
 const session = require('express-session');
 const canvas = require('canvas');
 const fs = require('fs');
+const passport = require('passport');
+const GoogleStrategy = require('passport-google-oauth20').Strategy;
+const crypto = require('crypto');
+const sqlite3 = require('sqlite3');
+const { open } = require('sqlite');
+const path = require('path');
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Configuration and Setup
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -12,12 +18,11 @@ const fs = require('fs');
 const DATABASE_PATH = process.env.DATABASE_PATH;
 const SESSION_SECRET = process.env.SESSION_SECRET;
 const EMOJI_API_KEY = process.env.EMOJI_API_KEY;
+const CLIENT_ID = process.env.CLIENT_ID;
+const CLIENT_SECRET = process.env.CLIENT_SECRET;
 
 const app = express();
 const PORT = 3000;
-
-const sqlite3 = require('sqlite3');
-const { open } = require('sqlite');
 
 async function openDatabase() {
     return open({
@@ -27,6 +32,25 @@ async function openDatabase() {
 }
 
 module.exports = { openDatabase };
+
+passport.use(new GoogleStrategy({
+    clientID: CLIENT_ID,
+    clientSecret: CLIENT_SECRET,
+    callbackURL: `http://localhost:${PORT}/auth/google/callback`
+}, (token, tokenSecret, profile, done) => {
+    // Hash the Google ID
+    const hashedGoogleId = crypto.createHash('sha256').update(profile.id).digest('hex');
+    console.log('Hashed Google ID:', hashedGoogleId); // Debugging line
+    return done(null, { profile, hashedGoogleId });
+}));
+
+passport.serializeUser((user, done) => {
+    done(null, user);
+});
+
+passport.deserializeUser((obj, done) => {
+    done(null, obj);
+});
 
 async function checkDatabase() {
     const db = await openDatabase();
@@ -87,6 +111,15 @@ app.use(
     })
 );
 
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+app.use(express.static('public'));                  // Serve static files
+app.use(express.urlencoded({ extended: true }));    // Parse URL-encoded bodies (as sent by HTML forms)
+app.use(express.json());                            // Parse JSON bodies (as sent by API clients)
+
+
 // Replace any of these variables below with constants for your application. These variables
 // should be used in your template files. 
 // 
@@ -109,10 +142,6 @@ app.use(async(req, res, next) => {
     next();
 });
 
-app.use(express.static('public'));                  // Serve static files
-app.use(express.urlencoded({ extended: true }));    // Parse URL-encoded bodies (as sent by HTML forms)
-app.use(express.json());                            // Parse JSON bodies (as sent by API clients)
-
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 // Routes
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -126,22 +155,14 @@ app.get('/', async (req, res) => {
         const posts = await getPosts();
         const user = await getCurrentUser(req) || null;
 
-        // console.log("Fetched Posts:", posts);
-
         // Attach the avatar URL and edit permissions to each post
         for (let post of posts) {
             // Ensure username is a string here
             post.username = String(post.username);
-
             const postUser = await app.locals.db.get("SELECT * FROM users WHERE username = ?", post.username);
             post.avatar_url = postUser ? postUser.avatar_url : null;
             post.userCanEdit = user && post.username === user.username;
-
-            // Log detailed post information
-            // console.log("Processed Post Data:", post);
         }
-
-        // console.log("User Data:", user);
 
         res.render('home', {
             posts,
@@ -155,8 +176,48 @@ app.get('/', async (req, res) => {
     }
 });
 
+// Serve the Terms of Service HTML file
+app.get('/terms-of-service.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'terms.html'));
+});
 
+// Serve the Privacy Policy HTML file
+app.get('/privacy-policy.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'privacy-policy.html'));
+});
 
+// Google OAuth login route
+app.get('/auth/google', passport.authenticate('google', { scope: ['profile'] }));
+
+// Google OAuth callback route
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), async (req, res) => {
+    const { profile, hashedGoogleId } = req.user; // Get the hashed Google ID from the user profile processed by passport
+    req.session.hashedGoogleId = hashedGoogleId; // Store the hashedGoogleId in the session
+
+    const db = app.locals.db;
+    const user = await db.get("SELECT * FROM users WHERE hashedGoogleId = ?", [hashedGoogleId]);
+
+    if (user) {
+        // User exists, log them in
+        req.session.userId = user.id;
+        req.session.loggedIn = true;
+        res.redirect('/');
+    } else {
+        // User does not exist, redirect to username registration
+        res.redirect('/registerUsername');
+    }
+});
+
+// Route to render the username registration page
+app.get('/registerUsername', (req, res) => {
+    res.render('registerUsername', { error: req.query.error });
+});
+
+// Route to handle the username registration form submission
+app.post('/registerUsername', async (req, res) => {
+    console.log('Received request to register username:', req.body.username); // Debugging line
+    await registerUser(req, res);
+});
 
 // Register GET route is used for error response from registration
 //
@@ -168,6 +229,21 @@ app.get('/register', (req, res) => {
 //
 app.get('/login', (req, res) => {
     res.render('loginRegister', { loginError: req.query.error });
+});
+
+// Logout route
+app.get('/logout', (req, res) => {
+    req.session.destroy(() => {
+        res.redirect('/googleLogout');
+    });
+});
+
+app.get('/googleLogout', (req, res) => {
+    res.render('googleLogout');
+});
+
+app.get('/logoutCallback', (req, res) => {
+    res.render('logoutCallback');
 });
 
 // Error route: render error page
@@ -205,8 +281,6 @@ app.get('/profile', isAuthenticated, (req, res) => {
     // TODO: Render profile page
     renderProfile(req, res);
 });
-
-const path = require('path');
 
 app.get('/avatar/:username', async (req, res) => {
     try {
@@ -284,13 +358,10 @@ app.post('/register', (req, res) => {
     registerUser(req, res);
     console.log('Registeration complete');
 });
+
 app.post('/login', (req, res) => {
     // TODO: Login a user
     loginUser(req, res);
-});
-app.get('/logout', (req, res) => {
-    // TODO: Logout the user
-    logoutUser(req, res);
 });
 
 app.delete('/delete/:id', isAuthenticated, async (req, res) => {
@@ -342,8 +413,6 @@ app.delete('/delete/:id', isAuthenticated, async (req, res) => {
 // Support Functions and Variables
 //~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-// Example data for posts and users
-let likes = [];
 
 // Function to find a user by username
 async function findUserByUsername(username) {
@@ -368,24 +437,6 @@ function calculateDate(){
     return `${year}-${month}-${day} ${hours}:${minutes}`;
 }
 
-// Function to add a new user
-function addUser(username, password) {
-    // TODO: Create a new user object and add to users array
-    const completeDate = calculateDate();
-    // Find the highest current user ID and add 1 to it
-    let maxId = users.reduce((max, user) => Math.max(max, user.id), 0);
-    let newUser = {
-        id: maxId + 1,
-        username: username,
-        password: password,
-        avatar_url: undefined,
-        memberSince: completeDate
-    };
-
-    users.push(newUser);  // Add the new user to the array
-    return newUser;
-}
-
 // Middleware to check if user is authenticated
 function isAuthenticated(req, res, next) {
     console.log(req.session.userId);
@@ -398,45 +449,74 @@ function isAuthenticated(req, res, next) {
 
 // Function to register a user
 async function registerUser(req, res) {
-    const { username, password } = req.body;
+    const { username } = req.body;
+    const hashedGoogleId = req.session.hashedGoogleId; 
+
+    if (!hashedGoogleId) {
+        return res.redirect('/auth/google'); 
+    }
+
     try {
         const db = app.locals.db;
         const userExists = await db.get("SELECT * FROM users WHERE username = ?", [username]);
         if (userExists) {
-            res.redirect('/register?error=Username+already+exists');
+            res.redirect('/registerUsername?error=Username+already+exists');
         } else {
-            await db.run("INSERT INTO users (username, password, memberSince) VALUES (?, ?, ?)", [username, password, new Date().toISOString()]);
-            res.redirect('/login');
+            // Generate avatar
+            const avatar = generateAvatar(username[0].toUpperCase());
+            const avatarFilename = `${username}.png`;
+            const avatarPath = path.join(__dirname, 'public', 'images', avatarFilename);
+            const relativeAvatarPath = path.join('images', avatarFilename);
+
+            fs.writeFileSync(avatarPath, avatar);
+
+            await db.run("INSERT INTO users (username, hashedGoogleId, avatar_url, memberSince) VALUES (?, ?, ?, ?)", [username, hashedGoogleId, relativeAvatarPath, new Date().toISOString()]);
+            const newUser = await db.get("SELECT * FROM users WHERE username = ?", [username]);
+            req.session.userId = newUser.id;
+            req.session.loggedIn = true;
+            res.redirect('/');
         }
     } catch (error) {
         console.error("Database error:", error);
-        res.redirect('/register?error=Unexpected+Error');
+        res.redirect('/registerUsername?error=Unexpected+Error');
     }
 }
 
-// Function to login a user
-async function loginUser(req, res) {
-    const { username, password } = req.body;
-    try {
-        const db = app.locals.db;
-        const user = await db.get("SELECT * FROM users WHERE username = ?", [username]);
-        if (user && user.password === password) { 
-            req.session.userId = user.id;
-            req.session.loggedIn = true;
-            console.log(`${username} logged in at ${calculateDate()}`);
-            res.redirect('/');
-        } else {
-            res.redirect('/login?error=Invalid+credentials');
+// Google OAuth callback route
+app.get('/auth/google/callback', passport.authenticate('google', { failureRedirect: '/login' }), async (req, res) => {
+    const { profile, hashedGoogleId } = req.user; // Get the hashed Google ID from the user profile processed by passport
+    req.session.hashedGoogleId = hashedGoogleId; // Store the hashedGoogleId in the session
+
+    const db = app.locals.db;
+    const user = await db.get("SELECT * FROM users WHERE hashedGoogleId = ?", [hashedGoogleId]);
+
+    if (user) {
+        // User exists, check if they have an avatar
+        if (!user.avatar_url) {
+            // Generate avatar
+            const avatar = generateAvatar(user.username[0].toUpperCase());
+            const avatarFilename = `${user.username}.png`;
+            const avatarPath = path.join(__dirname, 'public', 'images', avatarFilename);
+            const relativeAvatarPath = path.join('images', avatarFilename);
+
+            fs.writeFileSync(avatarPath, avatar);
+
+            // Update the avatar_url in the database
+            await db.run("UPDATE users SET avatar_url = ? WHERE id = ?", [relativeAvatarPath, user.id]);
         }
-    } catch (error) {
-        console.error("Database error:", error);
-        res.redirect('/login?error=Unexpected+Error');
+        // Log the user in
+        req.session.userId = user.id;
+        req.session.loggedIn = true;
+        res.redirect('/');
+    } else {
+        // User does not exist, redirect to username registration
+        res.redirect('/registerUsername');
     }
-}
+});
+
 
 // Function to logout a user
 function logoutUser(req, res) {
-    // TODO: Destroy session and redirect appropriately
     req.session.destroy(() => {
         res.redirect('/');
     })
