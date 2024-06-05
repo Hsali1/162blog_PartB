@@ -126,10 +126,6 @@ nav ul li:hover a {
         margin-right: 0;
     }
 
-    .user-info img {
-        alignments: center;
-    }
-
     .avatar-img {
         justify-content: center;
         width: 100%;
@@ -177,7 +173,6 @@ nav ul li:hover a {
     margin-top: 10px;
 }
 
-
 .post-status-bar {
     display: flex;
     align-items: center;
@@ -185,13 +180,14 @@ nav ul li:hover a {
     gap: 10px; 
 }
 
-.like-button, .delete-button {
+button {
     border: none;
     border-radius: 5px;
     padding: 8px 12px;
     cursor: pointer;
     font-size: 16px;
     transition: background-color 0.3s, transform 0.2s;
+    color: white;
 }
 
 .like-button {
@@ -213,8 +209,35 @@ nav ul li:hover a {
     transform: scale(1.05);
 }
 
-.like-button:hover, .delete-button:hover {
-    background-color: #0056b3;
+.cancel-button {
+    background-color: #FF6347;
+    margin-left: 10px;
+    color: white;
+}
+
+.cancel-button:hover {
+    background-color: #e05241;
+    transform: scale(1.05);
+}
+
+.save-button {
+    background-color: #28a745;
+    margin-left: 10px;
+}
+
+.save-button:hover {
+    background-color: #218838;
+    transform: scale(1.05);
+}
+
+.view-history-button, .edit-button {
+    background-color: #6c757d;
+    margin-left: 10px;
+}
+
+.view-history-button:hover, .edit-button:hover {
+    background-color: #5a6268;
+    transform: scale(1.05);
 }
 
 .like-button.liked {
@@ -373,8 +396,6 @@ textarea {
     background-color: #0056b3;
 }
 
-
-
 /* profile */
 .profile-container {
     display: flex;
@@ -399,4 +420,30 @@ textarea {
     font-size: 16px;
     color: #666;  
     margin: 5px 0;
+}
+
+
+/* History Content Styles */
+.history-content {
+    background-color: #f9f9f9;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.history-content p {
+    margin: 5px 0;
+    color: #666;
+}
+
+.timestamp {
+    color: #999;
+    font-size: 0.85rem;
+}
+
+.edited {
+    font-style: italic;
+    color: #999;
+    font-size: 0.85rem;
 }

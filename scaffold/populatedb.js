@@ -41,9 +41,12 @@ async function initializeDB() {
             username TEXT NOT NULL,
             content TEXT NOT NULL,
             timestamp DATETIME NOT NULL,
+            comment_history TEXT,
             FOREIGN KEY (postId) REFERENCES posts (id),
             FOREIGN KEY (username) REFERENCES users (username)
         );
+
+        
     `);
 
     const users = [

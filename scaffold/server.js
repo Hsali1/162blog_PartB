@@ -40,7 +40,7 @@ passport.use(new GoogleStrategy({
 }, (token, tokenSecret, profile, done) => {
     // Hash the Google ID
     const hashedGoogleId = crypto.createHash('sha256').update(profile.id).digest('hex');
-    console.log('Hashed Google ID:', hashedGoogleId); // Debugging line
+    // console.log('Hashed Google ID:', hashedGoogleId); // Debugging line
     return done(null, { profile, hashedGoogleId });
 }));
 
@@ -221,7 +221,7 @@ app.get('/registerUsername', (req, res) => {
 
 // Route to handle the username registration form submission
 app.post('/registerUsername', async (req, res) => {
-    console.log('Received request to register username:', req.body.username); // Debugging line
+    // console.log('Received request to register username:', req.body.username); // Debugging line
     await registerUser(req, res);
 });
 
@@ -270,7 +270,7 @@ app.post('/posts', async (req, res) => {
     const { title, content } = req.body;
     const user = await findUserById(req.session.userId);
     if (user) {
-        console.log('Creating post with username:', user.username); // Log the username
+        // console.log('Creating post with username:', user.username); // Log the username
         await addPost(title, content, user.username);
         res.redirect('/');
     } else {
@@ -280,6 +280,36 @@ app.post('/posts', async (req, res) => {
 
 app.post('/like/:id', async (req, res) => {
     await updatePostLikes(req, res);
+});
+
+app.put('/posts/:postId/comments/:commentId', async (req, res) => {
+    const postId = parseInt(req.params.postId);
+    const commentId = parseInt(req.params.commentId);
+    const { content } = req.body;
+    
+    try {
+        const db = app.locals.db;
+
+        // Get the current comment content and history
+        const comment = await db.get("SELECT content, comment_history FROM comments WHERE id = ?", [commentId]);
+        if (!comment) {
+            return res.status(404).json({ success: false, message: 'Comment not found.' });
+        }
+
+        const timestamp = new Date().toISOString();
+        const newHistoryEntry = `${comment.content} (edited on ${timestamp})`;
+
+        // Update the comment with new content and append the old content to history
+        await db.run(
+            "UPDATE comments SET content = ?, comment_history = ? WHERE id = ?",
+            [content, comment.comment_history ? comment.comment_history + '\n' + newHistoryEntry : newHistoryEntry, commentId]
+        );
+
+        res.status(200).json({ success: true, username: req.user.username });
+    } catch (error) {
+        console.error('Error updating comment:', error);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
 });
 
 
@@ -313,6 +343,30 @@ app.get('/avatar/:username', async (req, res) => {
         res.status(500).send('Internal server error');
     }
 });
+
+app.get('/posts/comments/:commentId/history', async (req, res) => {
+    const commentId = parseInt(req.params.commentId);
+
+    try {
+        const db = app.locals.db;
+        const comment = await db.get("SELECT comment_history FROM comments WHERE id = ?", [commentId]);
+
+        if (!comment || !comment.comment_history) {
+            return res.status(404).json({ success: false, message: 'No history found for this comment.' });
+        }
+
+        const history = comment.comment_history.split('\n').map(entry => {
+            const [content, timestamp] = entry.split(' (edited on ');
+            return { content, timestamp: timestamp.replace(')', '') };
+        });
+
+        res.status(200).json({ success: true, history });
+    } catch (error) {
+        console.error('Error retrieving comment history:', error);
+        res.status(500).json({ success: false, message: 'Internal server error.' });
+    }
+});
+
 
 app.get('/posts/:id/comments', async (req, res) => {
     const postId = parseInt(req.params.id);
@@ -362,7 +416,7 @@ app.post('/posts/:id/comments', async (req, res) => {
 app.post('/register', (req, res) => {
     // TODO: Register a new user
     registerUser(req, res);
-    console.log('Registeration complete');
+    // console.log('Registeration complete');
 });
 
 app.post('/login', (req, res) => {
@@ -619,7 +673,7 @@ async function getPosts() {
 async function addPost(title, content, username) {
     const db = app.locals.db;
     const date = calculateDate();
-    console.log('Adding post to database with username:', username); // Log the username
+    // console.log('Adding post to database with username:', username); // Log the username
     await db.run(
         "INSERT INTO posts (title, content, username, timestamp, likes) VALUES (?, ?, ?, ?, 0)",
         [title, content, username, date]

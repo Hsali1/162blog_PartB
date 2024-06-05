@@ -1,30 +1,19 @@
-<div class="post">
+<div class="post" id="post-{{id}}">
     <div class="post-avatar">
-        <!-- the user's avatar -->
         <img src="{{#if avatar_url}}{{avatar_url}}{{else}}avatar/{{username}}{{/if}}" alt="Profile Avatar">
     </div>
     <div class="post-content preserve-newlines">
-        <!-- the post -->
-        <h3>{{title}}</h3>
-        <p>{{content}}</p>
+        <h3 class="post-title">{{title}}</h3>
+        <p class="post-content">{{content}}</p>
         <div class="post-info">
             Posted by {{username}} on {{timestamp}}
         </div>
         <div class="post-status-bar">
-            <!-- everything that is shown in the status bar -->
-            <!-- Heart = ♥ -->
-            <!-- font awesome  trashcan = <i class="fas fa-trash-alt"> </i>-->
             <div class="likes-counter" id="likes-count-{{id}}">Likes: {{likes}} ♥</div>
-            {{#if userCanEdit}}
-                <button onclick="handleDeleteClick(event)" class="delete-button" data-id="{{id}}">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            {{/if}}
             <button onclick="handleLikeClick(event)" class="like-button {{#if userHasLiked}}liked{{/if}}" data-id="{{id}}">
                 <i class="fas fa-thumbs-up"></i> Like
             </button>
         </div>  
-        
         <div class="comments-section">
             <h4>Comments</h4>
             <ul id="comments-list-{{id}}">
@@ -47,14 +36,13 @@
             .then(response => response.json())
             .then(data => {
                 if (data.success) {
-                    // Find and update the likes count element
                     const likesCountElement = document.querySelector(`#likes-count-${postId}`);
                     if (likesCountElement) {
                         likesCountElement.textContent = `Likes: ${data.likes} ♥`;
                     }
                     button.classList.toggle('liked');
                 } else {
-                    console.error(data.message); // Show error message from server
+                    console.error('Failed to like post:', data.message);
                 }
             })
             .catch(error => {
@@ -70,7 +58,7 @@
             .then(response => {
                 if (response.ok) {
                     console.log('Post deleted');
-                    buttonElement.closest('.post').remove();  // Remove post from DOM
+                    buttonElement.closest('.post').remove();
                 } else {
                     response.json().then(data => {
                         console.error('Failed to delete post:', data.message);
@@ -78,6 +66,65 @@
                 }
             })
             .catch(error => console.error('Error deleting the post:', error));
+    }
+
+    function handleEditComment(event) {
+        const button = event.target;
+        const commentId = button.getAttribute('data-comment-id');
+        const postId = button.getAttribute('data-post-id');
+        const contentElement = document.getElementById(`comment-content-${commentId}`);
+        const content = contentElement.innerText.replace(/^[^:]+: /, ''); // Remove the username part
+        const username = button.getAttribute('data-username'); // Retrieve the username
+
+        contentElement.innerHTML = `<textarea id="edit-comment-input-${commentId}">${content}</textarea>`;
+        button.textContent = 'Save';
+        button.classList.add('save-button');
+        button.onclick = function() {
+            handleSaveComment(commentId, postId, username);
+        };
+
+        // Add a cancel button
+        const cancelButton = document.createElement('button');
+        cancelButton.textContent = 'Cancel';
+        cancelButton.classList.add('cancel-button');
+        cancelButton.onclick = function() {
+            loadComments(postId); // Reload comments to cancel editing
+        };
+        contentElement.parentElement.appendChild(cancelButton);
+    }
+
+    function handleSaveComment(commentId, postId, username) {
+        const input = document.getElementById(`edit-comment-input-${commentId}`);
+        const content = input.value;
+
+        fetch(`/posts/${postId}/comments/${commentId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ content }),
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const contentElement = document.getElementById(`comment-content-${commentId}`);
+                contentElement.innerHTML = `${username}: ${content} <span class="edited">(edited)</span>`;
+                const button = document.querySelector(`button[data-comment-id="${commentId}"]`);
+                button.textContent = 'Edit';
+                button.classList.add('edit-button');
+                button.onclick = function(event) {
+                    handleEditComment(event);
+                };
+                // Remove cancel button after saving
+                const cancelButton = contentElement.parentElement.querySelector('.cancel-button');
+                cancelButton.remove();
+            } else {
+                console.error('Failed to update comment:', data.message);
+            }
+        })
+        .catch(error => {
+            console.error('Error updating comment:', error);
+        });
     }
 
     async function loadComments(postId) {
@@ -89,7 +136,14 @@
 
             comments.forEach(comment => {
                 const li = document.createElement('li');
-                li.textContent = `${comment.username}: ${comment.content}`;
+                li.innerHTML = `
+                    <span id="comment-content-${comment.id}">${comment.username}: ${comment.content} ${comment.edited ? '<span class="edited">(edited)</span>' : ''}</span>
+                    ${comment.username === '{{user.username}}' ? `
+                        <button onclick="handleEditComment(event)" data-comment-id="${comment.id}" data-post-id="${postId}" data-username="${comment.username}">Edit</button>
+                    ` : ''}
+                    <button onclick="viewCommentHistory(${comment.id})" class="view-history-button">View History</button>
+                    <div id="history-content-${comment.id}" class="history-content" style="display:none;"></div>
+                `;
                 commentsList.appendChild(li);
             });
         } catch (error) {
@@ -124,7 +178,40 @@
         });
     }
 
-    // Load comments for each post after the page loads
+    function viewCommentHistory(commentId) {
+        console.log(`viewCommentHistory called for commentId: ${commentId}`);  // Debugging line
+        const historyContent = document.getElementById(`history-content-${commentId}`);
+        
+        if (historyContent.style.display === 'block') {
+            // Hide history if already visible
+            historyContent.style.display = 'none';
+            return;
+        }
+
+        fetch(`/posts/comments/${commentId}/history`)
+            .then(response => response.json())
+            .then(data => {
+                console.log('History fetch response:', data);  // Debugging line
+                if (data.success) {
+                    historyContent.innerHTML = '';
+
+                    data.history.reverse().forEach(entry => {  // Reverse to show latest first
+                        const div = document.createElement('div');
+                        div.innerHTML = `<p>${entry.content} <span class="timestamp">(${entry.timestamp})</span></p>`;
+                        historyContent.appendChild(div);
+                    });
+
+                    // Show the history content
+                    historyContent.style.display = 'block';
+                } else {
+                    console.error('Failed to retrieve comment history:', data.message);
+                }
+            })
+            .catch(error => {
+                console.error('Error retrieving comment history:', error);
+            });
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
         document.querySelectorAll('.post').forEach(postElement => {
             const postId = postElement.querySelector('.like-button').getAttribute('data-id');
@@ -133,4 +220,16 @@
     });
 </script>
 
+<!-- Include the modal template within the comment section -->
+<script id="comment-template" type="text/x-handlebars-template">
+    {{#each comments}}
+    <li id="comment-{{id}}">
+        <span id="comment-content-{{id}}">{{username}}: {{content}} {{edited ? '(edited)' : ''}}</span>
+        {{#if userCanEdit}}
+            <button onclick="handleEditComment(event)" data-comment-id="{{id}}" data-post-id="{{postId}}" data-username="{{username}}" class="edit-button">Edit</button>
+        {{/if}}
+        <button onclick="viewCommentHistory({{id}})">View History</button>
+        <div id="history-content-{{id}}" class="history-content" style="display:none;"></div>
+    </li>
+    {{/each}}
 </script>
